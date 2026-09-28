@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시점을 바꾸는 이야기 편집실</title>
+<style>
+:root{
+  --bg:#eaeef2; --sheet:#ffffff; --ink:#1c2632; --muted:#5b6776; --line:#cfd7e0;
+  --blue:#2c4db0; --blue-soft:#e3e9fb;
+  --know:#1d7466; --know-bg:#dff1ec;
+  --guess:#9a6412; --guess-bg:#f7ecd6;
+  --emo:#a83a64; --emo-bg:#f6e1ea;
+  --unk:#59626f; --unk-bg:#e6e9ee;
+  --focus:#f0a400;
+  --serif:"Nanum Myeongjo","AppleMyungjo","Batang","Noto Serif KR",serif;
+  --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#141a21; --sheet:#1d252f; --ink:#e6ebf1; --muted:#9aa6b4; --line:#334150;
+    --blue:#8fa8ff; --blue-soft:#243052;
+    --know:#6fd0bd; --know-bg:#193a35;
+    --guess:#e8b35e; --guess-bg:#3b2f1a;
+    --emo:#f08db2; --emo-bg:#3d2230;
+    --unk:#b3bcc8; --unk-bg:#2a323d;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6}
+a{color:var(--blue)}
+.skip{position:absolute;left:-999px;top:0;background:var(--blue);color:#fff;padding:.5rem 1rem;z-index:10}
+.skip:focus{left:1rem}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 1rem}
+
+/* header */
+header{background:var(--sheet);border-bottom:1px solid var(--line)}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.5rem;padding:1.1rem 1rem}
+.title{flex:1 1 320px}
+.title h1{margin:0;font-family:var(--serif);font-weight:800;font-size:clamp(1.35rem,3vw,1.9rem);letter-spacing:-.02em}
+.title p{margin:.2rem 0 0;color:var(--muted);font-size:.9rem}
+.tools{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.status{font-size:.85rem;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--sheet);border-radius:8px;padding:.5rem .9rem;cursor:pointer;min-height:40px}
+.btn:hover{border-color:var(--blue)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#101826}}
+.btn.danger{color:#b3261e;border-color:#e2b4b0}
+@media (prefers-color-scheme:dark){.btn.danger{color:#ff9b93;border-color:#6b3a37}}
+.btn.small{padding:.3rem .65rem;min-height:34px;font-size:.9rem}
+
+/* stepper */
+nav.steps{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.tablist{display:flex;gap:0;overflow-x:auto;padding:0 1rem;max-width:1180px;margin:0 auto;scrollbar-width:thin}
+.tab{flex:1 0 auto;display:flex;align-items:center;gap:.5rem;background:none;border:0;border-bottom:3px solid transparent;padding:.8rem .9rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+.tab .n{display:inline-grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;border:1.5px solid currentColor;font-size:.8rem;font-weight:700}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--blue);font-weight:700}
+.tab[aria-selected="true"] .n{background:var(--blue);border-color:var(--blue);color:#fff}
+.tab.done .n{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}
+
+main{padding:1.5rem 0 3rem}
+section[role=tabpanel]{outline:none}
+.panel-head{margin:0 0 1rem}
+.panel-head h2{margin:0;font-family:var(--serif);font-size:1.45rem}
+.panel-head p{margin:.3rem 0 0;color:var(--muted);max-width:70ch}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.25rem}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:1.2rem}
+.sheet h3{margin:0 0 .6rem;font-size:1.05rem}
+.hint{color:var(--muted);font-size:.9rem;margin:.2rem 0 .7rem}
+label.fl{display:block;font-weight:600;margin:.9rem 0 .35rem}
+textarea,input[type=text],select{width:100%;border:1px solid var(--line);background:var(--sheet);border-radius:8px;padding:.6rem .7rem}
+textarea{resize:vertical;min-height:84px;line-height:1.65}
+select{min-height:40px}
+
+/* story */
+.story-title{font-family:var(--serif);font-size:1.3rem;margin:0 0 .2rem}
+.story-meta{color:var(--muted);font-size:.85rem;margin:0 0 1rem}
+.sent{display:grid;grid-template-columns:2rem 1fr;gap:.2rem .6rem;padding:.55rem 0;border-top:1px dashed var(--line)}
+.sent:first-of-type{border-top:0}
+.sent .sn{font-size:.8rem;color:var(--muted);padding-top:.25rem}
+.sent .st{font-family:var(--serif);font-size:1.08rem;line-height:1.85}
+.sent .sel{grid-column:2}
+.sent .sel select{width:auto;min-width:230px;font-size:.9rem;min-height:36px;padding:.3rem .5rem}
+.sent[data-tag="fact"] .st{box-shadow:inset 3px 0 0 var(--know);padding-left:.5rem}
+.sent[data-tag="think"] .st{box-shadow:inset 3px 0 0 var(--emo);padding-left:.5rem}
+.sent[data-tag="guess"] .st{box-shadow:inset 3px 0 0 var(--guess);padding-left:.5rem}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0 .8rem}
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;padding:.15rem .55rem;border-radius:999px;font-weight:600}
+.c-know{background:var(--know-bg);color:var(--know)}
+.c-guess{background:var(--guess-bg);color:var(--guess)}
+.c-emo{background:var(--emo-bg);color:var(--emo)}
+.c-unk{background:var(--unk-bg);color:var(--unk)}
+.c-blue{background:var(--blue-soft);color:var(--blue)}
+
+table.chars{width:100%;border-collapse:collapse;font-size:.94rem}
+.table-scroll{overflow-x:auto}
+table.chars th,table.chars td{border-top:1px solid var(--line);padding:.6rem .4rem;vertical-align:top;text-align:left}
+table.chars th{width:7.5rem}
+table.chars td.act{color:var(--muted);font-size:.88rem;width:34%}
+table.chars textarea{min-height:64px}
+
+/* pov cards */
+.pov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem}
+.pov-card{position:relative;display:block;border:2px solid var(--line);border-radius:10px;padding:1rem;cursor:pointer;background:var(--sheet)}
+.pov-card input{position:absolute;opacity:0;pointer-events:none}
+.pov-card strong{display:block;font-family:var(--serif);font-size:1.15rem}
+.pov-card span{display:block;color:var(--muted);font-size:.88rem;margin-top:.25rem}
+.pov-card:has(input:checked){border-color:var(--blue);background:var(--blue-soft)}
+.pov-card:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:.5rem}
+.seg label{border:1.5px solid var(--line);border-radius:8px;padding:.5rem .8rem;cursor:pointer;background:var(--sheet)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){border-color:var(--blue);background:var(--blue-soft);font-weight:700}
+.seg label:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
+
+/* plan board */
+.items{list-style:none;margin:0;padding:0}
+.item{display:grid;grid-template-columns:1fr auto;gap:.5rem 1rem;align-items:center;padding:.65rem 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item p{margin:0}
+.item fieldset{border:0;margin:0;padding:0;display:flex;gap:.3rem;flex-wrap:wrap}
+.item legend{position:absolute;left:-9999px}
+.item fieldset label{position:relative;font-size:.85rem;padding:.3rem .6rem;border-radius:999px;border:1.5px solid var(--line);cursor:pointer;background:var(--sheet)}
+.item fieldset input{position:absolute;opacity:0;pointer-events:none}
+.item fieldset label:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
+.item fieldset label.k:has(input:checked){background:var(--know-bg);border-color:var(--know);color:var(--know);font-weight:700}
+.item fieldset label.g:has(input:checked){background:var(--guess-bg);border-color:var(--guess);color:var(--guess);font-weight:700}
+.item fieldset label.u:has(input:checked){background:var(--unk-bg);border-color:var(--unk);color:var(--unk);font-weight:700}
+@media (max-width:640px){.item{grid-template-columns:1fr}}
+
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin-top:1.25rem}
+@media (max-width:900px){.board{grid-template-columns:1fr}}
+.col{border-radius:10px;padding:1rem;border:1.5px solid}
+.col h3{margin:0 0 .3rem;font-size:1.05rem}
+.col.know{background:var(--know-bg);border-color:var(--know)}
+.col.know h3{color:var(--know)}
+.col.guess{background:var(--guess-bg);border-color:var(--guess)}
+.col.guess h3{color:var(--guess)}
+.col.emo{background:var(--emo-bg);border-color:var(--emo)}
+.col.emo h3{color:var(--emo)}
+.col ul{margin:.3rem 0 .6rem;padding-left:1.1rem;font-size:.9rem}
+.col ul:empty::before{content:"아직 분류한 항목이 없어요.";display:block;margin-left:-1.1rem;color:var(--muted);font-style:italic}
+.col textarea{background:var(--sheet)}
+.col label.fl{margin-top:.6rem;font-size:.92rem}
+
+/* write */
+.write-area{font-family:var(--serif);font-size:1.08rem;line-height:1.9;min-height:320px}
+.counter{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;font-size:.85rem;color:var(--muted);margin-top:.35rem}
+details.orig{margin-top:.8rem}
+details.orig summary{cursor:pointer;font-weight:600}
+.orig-text{font-family:var(--serif);line-height:1.85;margin:.6rem 0 0}
+.mini-board{display:grid;gap:.6rem;font-size:.9rem}
+.mini-board div{border-radius:8px;padding:.6rem .75rem}
+.mini-board b{display:block;margin-bottom:.2rem}
+.mini-board ul{margin:0;padding-left:1.1rem}
+
+/* compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:760px){.compare{grid-template-columns:1fr}}
+.compare h3{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.readonly{font-family:var(--serif);font-size:1.03rem;line-height:1.9;min-height:280px;background:var(--bg);resize:vertical}
+.exrow{border:1px solid var(--line);border-radius:10px;padding:.9rem;margin-top:.8rem;background:var(--sheet)}
+.exrow-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.exrow-head b{font-family:var(--serif)}
+.exgrid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+@media (max-width:640px){.exgrid{grid-template-columns:1fr}}
+.exrow label.fl{margin-top:.6rem}
+
+/* feedback */
+.fb{margin-top:1rem;border-left:4px solid var(--blue);background:var(--blue-soft);border-radius:0 10px 10px 0;padding:1rem 1.1rem}
+.fb[hidden]{display:none}
+.fb h3{margin:0 0 .2rem;font-size:1rem}
+.fb .note{margin:0 0 .6rem;font-size:.85rem;color:var(--muted)}
+.fb ol{margin:0;padding-left:1.25rem}
+.fb li{margin:.55rem 0}
+.fb li .chip{margin-right:.35rem}
+.fb q{font-family:var(--serif)}
+
+.pager{display:flex;justify-content:space-between;gap:.75rem;margin-top:1.5rem}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+kbd{font-family:var(--sans);font-size:.78rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 .3rem;background:var(--sheet)}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--sheet);color:var(--ink);max-width:420px;width:calc(100% - 2rem);padding:1.4rem}
+dialog::backdrop{background:rgba(10,20,30,.45)}
+dialog h2{margin:0 0 .5rem;font-size:1.15rem}
+.toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:.55rem 1rem;border-radius:8px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{nav.steps,.tools,.pager,.btn{display:none!important}section[role=tabpanel]{display:block!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header>
+  <div class="head wrap">
+    <div class="title">
+      <h1>시점을 바꾸는 이야기 편집실</h1>
+      <p>고등학교 「문학」 [12문학01-07] 작품 감상 · [12문학01-08] 작품 재구성</p>
+    </div>
+    <div class="tools">
+      <span class="status" id="saveStatus" role="status" aria-live="polite">자동 저장 준비 중</span>
+      <button class="btn danger" id="resetBtn" type="button">처음부터 다시 하기</button>
+    </div>
+  </div>
+</header>
+
+<nav class="steps" aria-label="활동 단계">
+  <div class="tablist" role="tablist" id="tablist">
+    <button class="tab" role="tab" id="tab-0" aria-controls="panel-0" type="button"><span class="n">1</span>원문 읽기</button>
+    <button class="tab" role="tab" id="tab-1" aria-controls="panel-1" type="button"><span class="n">2</span>시점 고르기</button>
+    <button class="tab" role="tab" id="tab-2" aria-controls="panel-2" type="button"><span class="n">3</span>쓰기 전 구분</button>
+    <button class="tab" role="tab" id="tab-3" aria-controls="panel-3" type="button"><span class="n">4</span>다시 쓰기</button>
+    <button class="tab" role="tab" id="tab-4" aria-controls="panel-4" type="button"><span class="n">5</span>비교하고 설명하기</button>
+  </div>
+</nav>
+
+<main id="main" class="wrap">
+
+<!-- STEP 1 -->
+<section role="tabpanel" id="panel-0" aria-labelledby="tab-0" tabindex="-1">
+  <div class="panel-head">
+    <h2>원문을 읽고 화자의 자리를 확인해요</h2>
+    <p>각 문장이 눈에 보이는 사실인지, 화자의 생각·감정인지, 화자가 짐작한 것인지 표시해 보세요. 정해진 답은 없고, 분류한 까닭이 중요해요.</p>
+  </div>
+  <div class="grid2">
+    <article class="sheet" aria-labelledby="storyTitle">
+      <h3 class="story-title" id="storyTitle">파란 우산</h3>
+      <p class="story-meta">이 앱을 위해 새로 쓴 짧은 이야기 · 1인칭 서술</p>
+      <div class="legend" aria-hidden="true">
+        <span class="chip c-know">보이는 사실</span>
+        <span class="chip c-emo">화자의 생각·감정</span>
+        <span class="chip c-guess">화자의 추측·해석</span>
+      </div>
+      <div id="sentences"></div>
+    </article>
+
+    <div class="sheet">
+      <h3>화자와 인물 확인하기</h3>
+      <label class="fl" for="narratorWho">이 이야기의 화자는 누구이고, 어디에서 무엇을 보고 있나요?</label>
+      <textarea id="narratorWho" data-key="narratorWho" placeholder="예: 화자는 ○○이고, ○○에 서서 …을 보고 있다."></textarea>
+
+      <label class="fl" for="narratorLimit">화자가 끝내 알 수 없는 것은 무엇인가요?</label>
+      <textarea id="narratorLimit" data-key="narratorLimit" placeholder="예: 준호가 속으로 …했는지는 알 수 없다."></textarea>
+
+      <h3 style="margin-top:1.2rem">인물의 말·행동과 드러난 생각</h3>
+      <p class="hint">원문에 적힌 말과 행동만 보고, 그 인물의 생각이 확인되는지 적어 보세요. 확인되지 않으면 “원문에서 확인 안 됨”이라고 써도 좋아요.</p>
+      <div class="table-scroll">
+      <table class="chars">
+        <thead class="sr"><tr><th>인물</th><td>원문의 말·행동</td><td>드러난 생각과 근거</td></tr></thead>
+        <tbody>
+          <tr><th scope="row">서윤(나)</th><td class="act">우산 없이 비를 봄 · 이름표를 봄 · 한참 움직이지 못함</td><td><label class="sr" for="th-seoyun">서윤의 생각</label><textarea id="th-seoyun" data-key="thoughts.seoyun"></textarea></td></tr>
+          <tr><th scope="row">준호</th><td class="act">말없이 우산을 내밂 · “난 괜찮아.” · 빗속으로 뛰어감</td><td><label class="sr" for="th-junho">준호의 생각</label><textarea id="th-junho" data-key="thoughts.junho"></textarea></td></tr>
+          <tr><th scope="row">민재</th><td class="act">정류장에서 젖은 채 서 있음</td><td><label class="sr" for="th-minjae">민재의 생각</label><textarea id="th-minjae" data-key="thoughts.minjae"></textarea></td></tr>
+          <tr><th scope="row">경비 아저씨</th><td class="act">창문 너머로 보며 천천히 고개를 저음</td><td><label class="sr" for="th-guard">경비 아저씨의 생각</label><textarea id="th-guard" data-key="thoughts.guard"></textarea></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="row" style="margin-top:1rem">
+        <button class="btn primary" type="button" data-fb="1">내 분류 점검 질문 받기</button>
+      </div>
+      <div class="fb" id="fb1" hidden tabindex="-1" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="pager"><span></span><button class="btn primary" type="button" data-go="1">다음: 시점 고르기</button></div>
+</section>
+
+<!-- STEP 2 -->
+<section role="tabpanel" id="panel-1" aria-labelledby="tab-1" tabindex="-1" hidden>
+  <div class="panel-head">
+    <h2>누구의 눈으로 다시 쓸까요?</h2>
+    <p>서윤이 아닌 인물 한 명을 고르세요. 그 인물이 서 있는 자리에 따라 보이는 것과 보이지 않는 것이 달라져요.</p>
+  </div>
+  <div class="sheet">
+    <fieldset style="border:0;padding:0;margin:0">
+      <legend class="fl" style="margin-top:0">새 화자(시점 인물)</legend>
+      <div class="pov-grid">
+        <label class="pov-card"><input type="radio" name="pov" value="junho" data-key="pov"><strong>준호</strong><span>우산을 건네고 빗속으로 뛰어간 친구. 동생이 어디 있는지 알고 있을까요?</span></label>
+        <label class="pov-card"><input type="radio" name="pov" value="minjae" data-key="pov"><strong>민재</strong><span>길 건너 정류장에서 비를 맞던 동생. 교문 앞 일을 얼마나 볼 수 있었을까요?</span></label>
+        <label class="pov-card"><input type="radio" name="pov" value="guard" data-key="pov"><strong>경비 아저씨</strong><span>경비실 창문 너머로 모든 장면을 본 사람. 말소리까지 들렸을까요?</span></label>
+      </div>
+    </fieldset>
+    <fieldset style="border:0;padding:0;margin:1.3rem 0 0">
+      <legend class="fl" style="margin-top:0">서술 방식</legend>
+      <div class="seg">
+        <label><input type="radio" name="person" value="first" data-key="person">1인칭: “나는 …”</label>
+        <label><input type="radio" name="person" value="third" data-key="person">3인칭 제한: “준호는 …” (그 인물의 마음만 들여다봄)</label>
+      </div>
+    </fieldset>
+    <label class="fl" for="povWhy">이 인물을 고른 까닭은 무엇인가요? 이 인물의 눈으로 보면 이야기에서 무엇이 새로 보일 것 같나요?</label>
+    <textarea id="povWhy" data-key="povWhy"></textarea>
+  </div>
+  <div class="pager"><button class="btn" type="button" data-go="0">이전</button><button class="btn primary" type="button" data-go="2">다음: 쓰기 전 구분</button></div>
+</section>
+
+<!-- STEP 3 -->
+<section role="tabpanel" id="panel-2" aria-labelledby="tab-2" tabindex="-1" hidden>
+  <div class="panel-head">
+    <h2><span class="povName">새 화자</span>가 아는 것과 모르는 것 나누기</h2>
+    <p>원문의 사건 하나하나를 새 화자의 자리에서 판단해 보세요. 표시한 결과는 아래 세 칸에 모여요.</p>
+  </div>
+  <div class="sheet">
+    <h3>사건 카드 분류</h3>
+    <p class="hint">방향키로 선택지를 옮길 수 있어요.</p>
+    <ul class="items" id="planItems"></ul>
+  </div>
+  <div class="board">
+    <div class="col know">
+      <h3>이 인물이 알 수 있는 사실</h3>
+      <ul id="listKnow"></ul>
+      <label class="fl" for="knowHow">어떻게 아나요? (직접 봄, 들음, 원래 알던 일 등)</label>
+      <textarea id="knowHow" data-key="knowHow"></textarea>
+    </div>
+    <div class="col guess">
+      <h3>추측할 수밖에 없는 사실</h3>
+      <ul id="listGuess"></ul>
+      <label class="fl" for="guessHow">무엇을 단서로 추측하나요?</label>
+      <textarea id="guessHow" data-key="guessHow"></textarea>
+    </div>
+    <div class="col emo">
+      <h3>달라질 감정</h3>
+      <ul id="listEmoHint"><li>원문 서윤의 감정과 비교해 보세요.</li></ul>
+      <label class="fl" for="emoBefore">원문에서 서윤이 느낀 감정</label>
+      <input type="text" id="emoBefore" data-key="emoBefore" placeholder="예: 당황, 미안함">
+      <label class="fl" for="emoAfter"><span class="povName">새 화자</span>가 이 장면에서 느낄 감정</label>
+      <input type="text" id="emoAfter" data-key="emoAfter" placeholder="감정 낱말 2~3개">
+      <label class="fl" for="emoWhy">감정이 달라지는 까닭</label>
+      <textarea id="emoWhy" data-key="emoWhy"></textarea>
+    </div>
+  </div>
+  <div class="row" style="margin-top:1rem"><button class="btn primary" type="button" data-fb="2">구분 점검 질문 받기</button></div>
+  <div class="fb" id="fb2" hidden tabindex="-1" aria-live="polite"></div>
+  <div class="pager"><button class="btn" type="button" data-go="1">이전</button><button class="btn primary" type="button" data-go="3">다음: 다시 쓰기</button></div>
+</section>
+
+<!-- STEP 4 -->
+<section role="tabpanel" id="panel-3" aria-labelledby="tab-3" tabindex="-1" hidden>
+  <div class="panel-head">
+    <h2><span class="povName">새 화자</span>의 시점으로 장면 다시 쓰기</h2>
+    <p>앞에서 나눈 구분을 지키며 써 보세요. 모르는 일은 모르는 채로, 짐작한 일은 짐작하는 말투로 쓰면 시점이 흔들리지 않아요.</p>
+  </div>
+  <div class="grid2">
+    <div class="sheet">
+      <label class="fl" for="draft" style="margin-top:0">새 글 <span id="personLabel" class="chip c-blue"></span></label>
+      <textarea id="draft" class="write-area" data-key="draft" placeholder="여기에 장면을 다시 써 보세요."></textarea>
+      <div class="counter"><span id="draftCount">0자</span><span>권장 분량 250~500자</span></div>
+      <div class="row" style="margin-top:1rem"><button class="btn primary" type="button" data-fb="3">초고 점검 질문 받기</button></div>
+      <div class="fb" id="fb3" hidden tabindex="-1" aria-live="polite"></div>
+    </div>
+    <aside class="sheet" aria-label="쓰기 참고 자료">
+      <h3>내가 세운 구분</h3>
+      <div class="mini-board" id="miniBoard"></div>
+      <details class="orig">
+        <summary>원문 다시 보기</summary>
+        <p class="orig-text" id="origInline"></p>
+      </details>
+    </aside>
+  </div>
+  <div class="pager"><button class="btn" type="button" data-go="2">이전</button><button class="btn primary" type="button" data-go="4">다음: 비교하고 설명하기</button></div>
+</section>
+
+<!-- STEP 5 -->
+<section role="tabpanel" id="panel-4" aria-labelledby="tab-4" tabindex="-1" hidden>
+  <div class="panel-head">
+    <h2>두 글을 나란히 놓고 해석의 차이 설명하기</h2>
+    <p>어떤 표현 때문에 독자가 장면을 다르게 읽게 되었는지 직접 짚어 보세요. 글에서 표현을 드래그하거나 <kbd>Shift</kbd>+방향키로 선택한 뒤 ‘가져오기’를 누르면 칸에 들어가요.</p>
+  </div>
+  <div class="compare">
+    <div class="sheet">
+      <h3>원문 · 서윤의 시점 <button class="btn small" type="button" data-grab="orig">선택한 표현 가져오기</button></h3>
+      <label class="sr" for="cmpOrig">원문</label>
+      <textarea id="cmpOrig" class="readonly" readonly></textarea>
+    </div>
+    <div class="sheet">
+      <h3>새 글 · <span class="povName">새 화자</span>의 시점 <button class="btn small" type="button" data-grab="neu">선택한 표현 가져오기</button></h3>
+      <label class="sr" for="cmpNew">새 글</label>
+      <textarea id="cmpNew" class="readonly" readonly></textarea>
+    </div>
+  </div>
+
+  <div class="sheet" style="margin-top:1.25rem">
+    <h3>해석을 바꾼 표현 설명하기</h3>
+    <p class="hint">‘가져오기’는 가장 아래 설명 칸에 표현을 채워요.</p>
+    <div id="exRows"></div>
+    <div class="row" style="margin-top:.9rem">
+      <button class="btn" type="button" id="addRow">설명 칸 추가</button>
+      <button class="btn primary" type="button" data-fb="4">설명 점검 질문 받기</button>
+    </div>
+    <div class="fb" id="fb4" hidden tabindex="-1" aria-live="polite"></div>
+
+    <label class="fl" for="reflect">시점을 바꿔 다시 쓰면서 원문에 대해 새로 알게 된 점은 무엇인가요?</label>
+    <textarea id="reflect" data-key="reflect"></textarea>
+  </div>
+  <div class="pager"><button class="btn" type="button" data-go="3">이전</button><button class="btn" type="button" id="printBtn">활동 내용 인쇄</button></div>
+</section>
+</main>
+
+<dialog id="resetDlg" aria-labelledby="resetTitle">
+  <h2 id="resetTitle">모든 입력을 지울까요?</h2>
+  <p>이 브라우저에 저장된 분류, 계획, 새 글, 설명이 모두 사라지고 되돌릴 수 없어요.</p>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" type="button" id="resetCancel">취소</button>
+    <button class="btn danger" type="button" id="resetOk">모두 지우기</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const STORE = "pov-edit-room-v1";
+
+const SENTENCES = [
+  {id:"s1", t:"장마가 시작된 날, 나는 교문 앞에서 비를 바라보고 있었다."},
+  {id:"s2", t:"우산을 챙기지 않은 건 나뿐인 것 같았다."},
+  {id:"s3", t:"그때 준호가 말없이 파란 우산을 내밀었다."},
+  {id:"s4", t:"“난 괜찮아.” 그 애는 그렇게 말하고 빗속으로 뛰어갔다."},
+  {id:"s5", t:"우산을 펴다가 나는 손잡이에 붙은 이름표를 보았다. ‘준호 동생 것.’"},
+  {id:"s6", t:"길 건너 정류장에는 준호의 동생 민재가 젖은 채 서 있었다."},
+  {id:"s7", t:"괜찮다는 말이 그제야 무겁게 들렸다."},
+  {id:"s8", t:"나는 우산을 쥔 채 한참을 움직이지 못했다."},
+  {id:"s9", t:"경비실 창문 너머에서 아저씨가 우리를 보며 천천히 고개를 저었다."}
+];
+const ORIGINAL = SENTENCES.map(s => s.t).join(" ");
+const HEDGE = /(것 같|듯|모양이|아마|지도 모르|ㄹ까|을까|는지|던지|인가|나 보|싶었|처럼 보|듯했|는 듯|모르겠)/;
+
+const CHARS = {
+  seoyun:{name:"서윤", names:["서윤"]},
+  junho:{name:"준호", names:["준호"]},
+  minjae:{name:"민재", names:["민재"]},
+  guard:{name:"경비 아저씨", names:["아저씨","경비"]}
+};
+
+const ITEMS = [
+  {id:"i1", t:"서윤이 우산 없이 교문 앞에 서 있었다.", kw:["교문"]},
+  {id:"i2", t:"준호가 서윤에게 파란 우산을 내밀었다.", kw:["내밀","건네","건넸"]},
+  {id:"i3", t:"준호가 “난 괜찮아.”라고 말했다.", kw:["괜찮"]},
+  {id:"i4", t:"우산 손잡이 이름표에 ‘준호 동생 것’이라고 적혀 있었다.", kw:["이름표","동생 것"]},
+  {id:"i5", t:"민재가 정류장에서 젖은 채 서 있었다.", kw:["정류장"]},
+  {id:"i6", t:"서윤이 우산을 쥔 채 한참 움직이지 못했다.", kw:["움직이지","꼼짝"]},
+  {id:"i7", t:"서윤이 우산을 받고 느낀 마음", owner:"seoyun", inner:true},
+  {id:"i8", t:"준호가 동생의 우산을 건넨 이유", owner:"junho", inner:true},
+  {id:"i9", t:"민재가 비를 맞으며 느낀 마음", owner:"minjae", inner:true},
+  {id:"i10", t:"경비 아저씨가 고개를 저은 이유", owner:"guard", inner:true}
+];
+const CAT = {know:"알 수 있음", guess:"추측만 가능", unknown:"알 수 없음"};
+
+function fresh(){
+  return {step:0, tags:{}, narratorWho:"", narratorLimit:"",
+    thoughts:{seoyun:"",junho:"",minjae:"",guard:""},
+    pov:"", person:"", povWhy:"", plan:{}, knowHow:"", guessHow:"",
+    emoBefore:"", emoAfter:"", emoWhy:"", draft:"",
+    explains:[{orig:"",neu:"",effect:""}], reflect:"", visited:[0]};
+}
+let state = fresh();
+let storageOK = true;
+
+/* ---------- storage ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE);
+    if(raw){ const d = JSON.parse(raw); state = Object.assign(fresh(), d);
+      if(!Array.isArray(state.explains) || !state.explains.length) state.explains=[{orig:"",neu:"",effect:""}]; }
+  }catch(e){ storageOK = false; }
+}
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  status("저장 중…");
+  saveTimer = setTimeout(() => {
+    try{
+      localStorage.setItem(STORE, JSON.stringify(state));
+      const d = new Date();
+      status("자동 저장됨 " + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"));
+    }catch(e){ storageOK = false; status("이 브라우저에서는 저장할 수 없어요"); }
+  }, 400);
+}
+function status(t){ document.getElementById("saveStatus").textContent = t; }
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function getPath(o,p){ return p.split(".").reduce((a,k) => a == null ? undefined : a[k], o); }
+function setPath(o,p,v){ const ks = p.split("."); let c = o;
+  for(let i=0;i<ks.length-1;i++){ if(c[ks[i]] == null) c[ks[i]] = /^\d+$/.test(ks[i+1]) ? [] : {}; c = c[ks[i]]; }
+  c[ks[ks.length-1]] = v; }
+function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(()=>el.classList.remove("show"), 1800); }
+function povName(){ return state.pov ? CHARS[state.pov].name : "새 화자"; }
+function stripQuotes(s){ return s.replace(/“[^”]*”|"[^"]*"|‘[^’]*’|'[^']*'/g, " "); }
+function splitSent(s){ return (s.match(/[^.!?。\n]+[.!?。]?/g) || []).map(x => x.trim()).filter(Boolean); }
+function li(cat, label, html){ return {cat, label, html}; }
+
+/* ---------- render ---------- */
+function renderSentences(){
+  $("#sentences").innerHTML = SENTENCES.map((s,i) => `
+    <div class="sent" data-tag="${esc(state.tags[s.id]||"")}" id="row-${s.id}">
+      <span class="sn" aria-hidden="true">${i+1}</span>
+      <p class="st" id="txt-${s.id}" style="margin:0">${esc(s.t)}</p>
+      <div class="sel">
+        <label class="sr" for="tag-${s.id}">${i+1}번 문장의 성격</label>
+        <select id="tag-${s.id}" data-key="tags.${s.id}" aria-describedby="txt-${s.id}">
+          <option value="">문장의 성격 고르기</option>
+          <option value="fact">보이는 사실</option>
+          <option value="think">화자의 생각·감정</option>
+          <option value="guess">화자의 추측·해석</option>
+        </select>
+      </div>
+    </div>`).join("");
+}
+function renderPlanItems(){
+  $("#planItems").innerHTML = ITEMS.map(it => `
+    <li class="item">
+      <p>${esc(it.t)}</p>
+      <fieldset>
+        <legend>${esc(it.t)}: 새 화자의 입장에서</legend>
+        <label class="k"><input type="radio" name="plan-${it.id}" value="know" data-key="plan.${it.id}">알 수 있음</label>
+        <label class="g"><input type="radio" name="plan-${it.id}" value="guess" data-key="plan.${it.id}">추측만 가능</label>
+        <label class="u"><input type="radio" name="plan-${it.id}" value="unknown" data-key="plan.${it.id}">알 수 없음</label>
+      </fieldset>
+    </li>`).join("");
+}
+function renderBoard(){
+  const by = c => ITEMS.filter(it => state.plan[it.id] === c).map(it => `<li>${esc(it.t)}</li>`).join("");
+  $("#listKnow").innerHTML = by("know");
+  $("#listGuess").innerHTML = by("guess");
+  const unk = ITEMS.filter(it => state.plan[it.id] === "unknown").map(it => esc(it.t));
+  const emo = state.emoAfter ? esc(state.emoAfter) : "아직 적지 않았어요";
+  $("#miniBoard").innerHTML = `
+    <div class="c-know"><b>알 수 있음</b><ul>${by("know") || "<li>없음</li>"}</ul></div>
+    <div class="c-guess"><b>추측만 가능 · 짐작하는 말투로</b><ul>${by("guess") || "<li>없음</li>"}</ul></div>
+    <div class="c-unk"><b>알 수 없음 · 쓰지 않거나 모른다고 쓰기</b><ul>${unk.length ? unk.map(x=>"<li>"+x+"</li>").join("") : "<li>없음</li>"}</ul></div>
+    <div class="c-emo"><b>달라질 감정</b>${esc(state.emoBefore||"?")} → ${emo}</div>`;
+}
+function renderPov(){
+  $$(".povName").forEach(el => el.textContent = povName());
+  const p = state.person === "first" ? "1인칭" : state.person === "third" ? "3인칭 제한" : "서술 방식 미정";
+  $("#personLabel").textContent = povName() + " · " + p;
+  $("#draft").placeholder = state.pov
+    ? (state.person === "third" ? `예: ${povName()}은(는) … 보았다.` : "예: 나는 … 보았다.")
+    : "2단계에서 새 화자를 먼저 골라 주세요.";
+}
+function renderExplains(){
+  $("#exRows").innerHTML = state.explains.map((r,i) => `
+    <div class="exrow" id="ex-${i}">
+      <div class="exrow-head"><b>설명 ${i+1}</b>${state.explains.length>1 ? `<button class="btn small" type="button" data-del="${i}" aria-label="설명 ${i+1} 삭제">삭제</button>` : ""}</div>
+      <div class="exgrid">
+        <div><label class="fl" for="ex-o-${i}">원문의 표현</label><input type="text" id="ex-o-${i}" data-key="explains.${i}.orig"></div>
+        <div><label class="fl" for="ex-n-${i}">새 글의 표현</label><input type="text" id="ex-n-${i}" data-key="explains.${i}.neu"></div>
+      </div>
+      <label class="fl" for="ex-e-${i}">이 표현 때문에 독자의 해석이 어떻게 달라지나요?</label>
+      <textarea id="ex-e-${i}" data-key="explains.${i}.effect" placeholder="예: 원문에서는 …라서 독자가 …라고 읽지만, 새 글에서는 …라는 표현 때문에 …처럼 느끼게 된다."></textarea>
+    </div>`).join("");
+  fill($("#exRows"));
+}
+function renderCompare(){
+  $("#cmpOrig").value = ORIGINAL;
+  $("#cmpNew").value = state.draft.trim() ? state.draft : "(아직 새 글이 없어요. 4단계에서 먼저 써 주세요.)";
+}
+function renderCount(){
+  const n = state.draft.replace(/\s/g,"").length;
+  $("#draftCount").textContent = `${state.draft.length}자 (공백 제외 ${n}자)`;
+}
+function fill(root){
+  (root||document).querySelectorAll("[data-key]").forEach(el => {
+    const v = getPath(state, el.dataset.key);
+    if(el.type === "radio") el.checked = (v === el.value);
+    else el.value = v == null ? "" : v;
+  });
+}
+
+/* ---------- tabs ---------- */
+function goStep(i, focusPanel){
+  state.step = i;
+  if(!state.visited.includes(i)) state.visited.push(i);
+  $$(".tab").forEach((t,k) => {
+    const on = k === i;
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    t.classList.toggle("done", !on && state.visited.includes(k));
+  });
+  $$("section[role=tabpanel]").forEach((p,k) => p.hidden = k !== i);
+  if(i === 2 || i === 3) renderBoard();
+  if(i === 4) renderCompare();
+  renderPov();
+  if(focusPanel){ const p = $("#panel-"+i); p.focus({preventScroll:true}); window.scrollTo({top:0}); }
+  save();
+}
+$("#tablist").addEventListener("click", e => { const t = e.target.closest(".tab"); if(t) goStep(+t.id.split("-")[1], false); });
+$("#tablist").addEventListener("keydown", e => {
+  const tabs = $$(".tab"); let i = state.step;
+  if(e.key === "ArrowRight") i = (i+1) % tabs.length;
+  else if(e.key === "ArrowLeft") i = (i-1+tabs.length) % tabs.length;
+  else if(e.key === "Home") i = 0;
+  else if(e.key === "End") i = tabs.length-1;
+  else return;
+  e.preventDefault(); goStep(i,false); tabs[i].focus();
+});
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-go]"); if(g){ goStep(+g.dataset.go, true); return; }
+  const f = e.target.closest("[data-fb]"); if(f){ showFeedback(+f.dataset.fb); return; }
+  const d = e.target.closest("[data-del]");
+  if(d){ state.explains.splice(+d.dataset.del,1); renderExplains(); save(); toast("설명 칸을 지웠어요"); $("#addRow").focus(); return; }
+  const gr = e.target.closest("[data-grab]"); if(gr){ grab(gr.dataset.grab); }
+});
+
+/* ---------- input binding ---------- */
+function onInput(e){
+  const el = e.target, k = el.dataset && el.dataset.key; if(!k) return;
+  if(el.type === "radio"){ if(!el.checked) return; }
+  setPath(state, k, el.value);
+  if(k.startsWith("tags.")){ const row = document.getElementById("row-"+k.slice(5)); if(row) row.dataset.tag = el.value; }
+  if(k.startsWith("plan.") || k.startsWith("emo")) renderBoard();
+  if(k === "pov" || k === "person") renderPov();
+  if(k === "draft") renderCount();
+  save();
+}
+document.addEventListener("input", onInput);
+document.addEventListener("change", onInput);
+
+$("#addRow").addEventListener("click", () => {
+  state.explains.push({orig:"",neu:"",effect:""}); renderExplains(); save();
+  document.getElementById("ex-o-"+(state.explains.length-1)).focus();
+});
+function grab(which){
+  const ta = which === "orig" ? $("#cmpOrig") : $("#cmpNew");
+  let txt = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+  if(!txt){ const s = window.getSelection ? String(window.getSelection()).trim() : ""; txt = s; }
+  if(!txt){ toast("먼저 글에서 표현을 선택해 주세요"); ta.focus(); return; }
+  const i = state.explains.length - 1;
+  const key = which === "orig" ? "orig" : "neu";
+  state.explains[i][key] = txt;
+  const input = document.getElementById((which==="orig"?"ex-o-":"ex-n-")+i);
+  input.value = txt; save();
+  toast(`설명 ${i+1}에 표현을 넣었어요`);
+  input.focus();
+}
+
+/* ---------- reset ---------- */
+const dlg = $("#resetDlg");
+$("#resetBtn").addEventListener("click", () => {
+  if(typeof dlg.showModal === "function"){ dlg.showModal(); $("#resetCancel").focus(); }
+  else if(confirm("모든 입력을 지울까요? 되돌릴 수 없어요.")) doReset();
+});
+$("#resetCancel").addEventListener("click", () => dlg.close());
+$("#resetOk").addEventListener("click", () => { dlg.close(); doReset(); });
+function doReset(){
+  try{ localStorage.removeItem(STORE); }catch(e){}
+  state = fresh();
+  renderSentences(); renderExplains(); fill(); renderCount();
+  $$(".fb").forEach(f => { f.hidden = true; f.innerHTML = ""; });
+  goStep(0, true);
+  toast("모든 입력을 지웠어요");
+}
+$("#printBtn").addEventListener("click", () => window.print());
+
+/* ---------- feedback (질문형, 점수 없음) ---------- */
+const TAGS = {c:"시점의 일관성", g:"근거", e:"표현 효과"};
+const TAGCLS = {c:"c-blue", g:"c-know", e:"c-emo"};
+
+function fb1(){
+  const out = [];
+  const untagged = SENTENCES.filter(s => !state.tags[s.id]);
+  if(untagged.length) out.push(li("g","",`아직 표시하지 않은 문장이 ${untagged.length}개 있어요. 가장 판단하기 어려운 문장은 어느 것이고, 왜 어렵게 느껴지나요?`));
+  SENTENCES.forEach((s,i) => {
+    const t = state.tags[s.id];
+    if(t === "fact" && HEDGE.test(s.t)) out.push(li("g","",`${i+1}번 문장을 ‘보이는 사실’로 표시했어요. <q>${esc(s.t)}</q>에 들어 있는 짐작의 말투는 누구의 판단을 나타낼까요?`));
+    if(t === "fact" && /무겁게|그제야/.test(s.t)) out.push(li("e","",`${i+1}번 문장에서 말이 ‘무겁게 들렸다’는 것은 눈이나 귀로 확인되는 사실일까요, 화자 마음속의 변화일까요?`));
+    if((t === "think" || t === "guess") && s.id === "s9") out.push(li("c","",`9번 문장은 아저씨의 행동만 적고 있어요. 이 문장만으로 아저씨의 마음을 알 수 있나요? 화자가 이유를 말하지 않은 것은 독자에게 어떤 여지를 남기나요?`));
+  });
+  const th = state.thoughts;
+  if(th.junho && !/확인 안|알 수 없|모름|짐작|추측|것 같/.test(th.junho))
+    out.push(li("g","",`준호의 생각을 “${esc(th.junho.slice(0,40))}${th.junho.length>40?"…":""}”라고 적었어요. 이것은 원문 문장으로 확인되나요, 서윤(화자)의 눈을 거쳐 우리가 짐작한 것인가요?`));
+  if(!state.narratorLimit.trim()) out.push(li("c","",`1인칭 화자인 서윤이 끝내 알 수 없는 것은 무엇일까요? 그 ‘빈칸’이 이야기의 긴장을 어떻게 만드나요?`));
+  else out.push(li("c","",`화자가 알 수 없다고 적은 것 가운데, 다른 인물의 시점으로 바꾸면 알 수 있게 되는 것은 무엇인가요?`));
+  if(!state.narratorWho.trim()) out.push(li("g","",`화자가 서 있는 장소는 어디인가요? 그 자리에서 보이지 않는 곳은 어디일까요?`));
+  return out;
+}
+function fb2(){
+  const out = [];
+  if(!state.pov){ out.push(li("c","","2단계에서 새 화자를 먼저 골라 주세요. 누구의 자리에 서느냐에 따라 이 표의 판단이 모두 달라져요.")); return out; }
+  const name = povName();
+  const empty = ITEMS.filter(it => !state.plan[it.id]);
+  if(empty.length) out.push(li("g","",`분류하지 않은 사건 카드가 ${empty.length}개 있어요. ${esc(name)}의 위치(어디에 있었는지)와 시간(언제 도착했는지)을 떠올리면 판단에 도움이 될까요?`));
+  ITEMS.forEach(it => {
+    const v = state.plan[it.id]; if(!v) return;
+    if(it.inner && it.owner === state.pov && v !== "know")
+      out.push(li("c","",`<q>${esc(it.t)}</q>은(는) ${esc(name)} 자신의 마음이에요. ‘${CAT[v]}’으로 표시한 까닭은 무엇인가요? 자기 마음을 스스로도 잘 모르는 상황이라면 그 망설임을 글에 어떻게 드러낼 수 있을까요?`));
+    if(it.inner && it.owner !== state.pov && v === "know")
+      out.push(li("g","",`${esc(name)}이(가) <q>${esc(it.t)}</q>을(를) 확실히 안다고 표시했어요. 어떤 말이나 행동을 보고 알게 되나요? 그 통로가 글 속에 드러나도록 계획했나요?`));
+  });
+  if(state.pov === "minjae" && state.plan.i3 === "know") out.push(li("g","",`민재는 길 건너 정류장에 있었어요. 빗소리 속에서 “난 괜찮아.”라는 말이 들렸을까요? 들렸다면, 혹은 나중에 전해 들었다면 글에서 그것을 어떻게 보여 줄까요?`));
+  if(state.pov === "guard" && (state.plan.i3 === "know" || state.plan.i4 === "know")) out.push(li("g","",`경비실 창문 너머에서 작은 말소리나 손잡이의 이름표 글씨까지 확인할 수 있었을까요? 보이는 것과 들리는 것을 나누어 생각해 보세요.`));
+  if(state.pov === "junho" && state.plan.i6 === "know") out.push(li("g","",`준호는 빗속으로 뛰어갔어요. 서윤이 한참 움직이지 못한 모습을 준호가 볼 수 있는 자리였을까요? 뒤돌아보는 순간을 넣을 생각인가요?`));
+  const cats = new Set(Object.values(state.plan));
+  if(Object.keys(state.plan).length >= 6 && cats.size === 1) out.push(li("c","",`모든 카드를 같은 칸에 넣었어요. ${esc(name)}이(가) 서윤과 같은 것을 알고 있다면 시점을 바꾸는 의미는 어디에서 생길까요?`));
+  if(!state.guessHow.trim() && ITEMS.some(it => state.plan[it.id] === "guess")) out.push(li("g","",`추측할 수밖에 없는 사실의 단서는 무엇인가요? 표정, 몸짓, 날씨, 물건 같은 구체적 단서를 적어 보세요.`));
+  if(!state.emoAfter.trim()) out.push(li("e","",`${esc(name)}이(가) 이 장면에서 느낄 감정은 서윤의 감정과 어떻게 다를까요? 같은 사건이 누구에게는 고마움이고 누구에게는 서운함일 수 있어요.`));
+  else out.push(li("e","",`‘${esc(state.emoAfter)}’이라는 감정을 감정 낱말로 직접 쓸 건가요, 행동이나 감각으로 보여 줄 건가요? 두 방법은 독자에게 어떻게 다르게 다가올까요?`));
+  return out;
+}
+function fb3(){
+  const out = [], d = state.draft.trim();
+  if(!state.pov){ out.push(li("c","","새 화자를 아직 고르지 않았어요. 누구의 눈으로 쓴 글인지 정하면 점검 질문도 더 구체적으로 드릴 수 있어요.")); }
+  if(!d){ out.push(li("e","","아직 새 글이 없어요. 새 화자가 가장 먼저 보거나 듣는 것은 무엇일까요? 그 감각에서 첫 문장을 시작해 보세요.")); return out; }
+  const name = povName();
+  const plain = stripQuotes(d);
+  const sents = splitSent(plain);
+  const firstP = /(^|[\s,])(나는|내가|나를|나도|나의|내\s|내게|나에게)/;
+  if(state.person === "third" && firstP.test(plain))
+    out.push(li("c","",`3인칭 제한 시점으로 정했는데, 따옴표 밖에 ‘나’를 가리키는 말이 보여요. 이 ‘나’는 누구인가요? 독자가 화자를 헷갈리지는 않을까요?`));
+  if(state.person === "first" && !firstP.test(plain))
+    out.push(li("c","",`1인칭으로 정했는데 따옴표 밖에서 ‘나’가 잘 보이지 않아요. 독자는 이 글의 화자가 ${esc(name)}이라는 것을 어디에서 알아차릴까요?`));
+  if(state.person === "first" && state.pov){
+    const self = CHARS[state.pov].names.find(n => new RegExp(n+"(은|는|이|가)\\s").test(plain));
+    if(self) out.push(li("c","",`1인칭 화자인데 ‘${esc(self)}’를 주어로 부르는 문장이 있어요. 화자가 자기 자신을 이름으로 부르는 효과를 의도했나요?`));
+  }
+  const others = Object.keys(CHARS).filter(k => k !== state.pov).flatMap(k => CHARS[k].names);
+  const mindRe = new RegExp("(" + others.join("|") + ")[^.!?\\n]{0,25}(생각했다|느꼈다|깨달았다|알았다|믿었다|마음이|기뻤|슬펐|미안했|부끄러웠|서운했|고마웠|속상했|후회했|억울했)");
+  const certain = sents.filter(s => mindRe.test(s) && !HEDGE.test(s));
+  certain.slice(0,2).forEach(s => out.push(li("c","",`<q>${esc(s)}</q> — ${esc(name)}이(가) 다른 인물의 속마음을 확신하고 있어요. 어떻게 알게 되었나요? 확신 대신 짐작하는 말투로 바꾸면 장면의 느낌은 어떻게 달라질까요?`)));
+  const guessCnt = ITEMS.filter(it => state.plan[it.id] === "guess").length;
+  if(guessCnt && !HEDGE.test(plain)) out.push(li("c","",`3단계에서 ‘추측만 가능’으로 표시한 사건이 ${guessCnt}개인데, 글에서는 짐작을 나타내는 표현(-ㄴ 것 같다, -ㄹ까, 아마 등)이 보이지 않아요. 그 사건들은 글에서 어떻게 다뤄졌나요?`));
+  ITEMS.filter(it => state.plan[it.id] === "unknown" && it.kw).forEach(it => {
+    const hit = it.kw.find(k => d.includes(k));
+    if(hit) out.push(li("g","",`‘알 수 없음’으로 표시한 <q>${esc(it.t)}</q>와 관련된 말(‘${esc(hit)}’)이 글에 나와요. ${esc(name)}이(가) 이것을 알게 되는 과정이 글에 드러나나요, 아니면 구분을 다시 생각해 볼까요?`));
+  });
+  const copied = SENTENCES.map(s => s.t).flatMap(t => splitSent(stripQuotes(t))).filter(t => t.length >= 12 && d.includes(t.replace(/[.!?]$/,"")));
+  if(copied.length) out.push(li("e","",`원문 문장이 그대로 옮겨진 부분이 있어요(<q>${esc(copied[0])}</q>). 원문은 서윤이 본 문장인데, ${esc(name)}의 눈에도 똑같이 보였을까요? 이 인물이라면 무엇을 먼저, 어떤 말로 묘사할까요?`));
+  const emoWords = (state.emoAfter||"").split(/[\s,·→/]+/).filter(w => w.length >= 2);
+  if(emoWords.length){
+    const direct = emoWords.find(w => d.includes(w.slice(0, Math.max(2, w.length-1))));
+    if(direct) out.push(li("e","",`계획한 감정 ‘${esc(direct)}’을(를) 낱말로 직접 썼어요. 같은 감정을 몸짓이나 날씨, 사물 묘사로 보여 준다면 독자의 해석은 어떻게 달라질까요?`));
+    else out.push(li("e","",`계획한 감정 ‘${esc(state.emoAfter)}’은(는) 글의 어느 표현에서 느껴지나요? 친구가 이 글만 읽고도 그 감정을 알아챌 수 있을지 확인해 보세요.`));
+  }
+  if(d.replace(/\s/g,"").length < 150) out.push(li("e","",`글이 짧은 편이에요. ${esc(name)}의 자리에서만 들리는 소리, 보이는 풍경, 몸의 감각을 하나 더한다면 무엇일까요?`));
+  const last = sents[sents.length-1];
+  if(last) out.push(li("e","",`마지막 문장 <q>${esc(last)}</q>은(는) 독자에게 어떤 여운을 남기나요? 원문의 마지막 장면과 비교해 보세요.`));
+  return out;
+}
+function fb4(){
+  const out = [], d = state.draft;
+  const rows = state.explains.filter(r => r.orig.trim() || r.neu.trim() || r.effect.trim());
+  if(!rows.length){ out.push(li("g","","아직 설명이 없어요. 두 글을 나란히 읽을 때 가장 다르게 느껴지는 한 문장을 먼저 골라 보세요.")); return out; }
+  state.explains.forEach((r,i) => {
+    const n = i+1;
+    if(!r.orig.trim() && !r.neu.trim() && !r.effect.trim()) return;
+    if(!r.neu.trim()) out.push(li("g","",`설명 ${n}: 새 글의 어떤 표현을 근거로 삼았나요? 구체적인 낱말이나 문장을 짚으면 설명이 더 분명해져요.`));
+    else if(!d.includes(r.neu.trim())) out.push(li("g","",`설명 ${n}: <q>${esc(r.neu)}</q>가 새 글에 그대로 있지 않아요. 표현을 고쳐 썼다면 설명도 지금 글에 맞게 고칠까요?`));
+    if(!r.orig.trim()) out.push(li("g","",`설명 ${n}: 새 표현과 비교할 원문의 표현은 무엇인가요? 원문에 대응하는 표현이 아예 없다면, ‘없다’는 사실 자체가 무엇을 뜻할까요?`));
+    else if(!ORIGINAL.includes(r.orig.trim())) out.push(li("g","",`설명 ${n}: <q>${esc(r.orig)}</q>는 원문과 조금 달라요. 원문에서 정확히 어느 부분인지 다시 확인해 볼까요?`));
+    const ef = r.effect.trim();
+    if(!ef) out.push(li("e","",`설명 ${n}: 두 표현 때문에 독자가 장면을 어떻게 다르게 읽게 되나요?`));
+    else {
+      if(ef.length < 30) out.push(li("e","",`설명 ${n}: “${esc(ef)}” — 무엇이 달라졌는지에 더해, 그래서 독자가 인물이나 사건을 어떻게 판단하게 되는지까지 이어 쓸 수 있을까요?`));
+      if(!/독자|읽|느끼|느껴|보이|해석|생각하게|여기게|궁금/.test(ef)) out.push(li("e","",`설명 ${n}: 표현의 차이는 잘 짚었어요. 그 차이가 ‘독자’에게 어떤 효과를 주는지도 말해 볼까요?`));
+      if(!/알|모르|짐작|추측|보았|들었|시점|화자|눈/.test(ef)) out.push(li("c","",`설명 ${n}: 이 차이는 새 화자가 ‘알 수 있는 것’과 ‘알 수 없는 것’의 경계와 관련이 있나요?`));
+    }
+  });
+  if(rows.length === 1) out.push(li("e","","설명이 하나예요. 인물에 대한 판단을 바꾼 표현과 분위기를 바꾼 표현을 나누어 하나 더 찾아볼까요?"));
+  if(!state.reflect.trim()) out.push(li("c","","다시 쓰기를 마친 지금, 원문에서 서윤이 모르고 있던 것이 이야기에 어떤 힘을 주었다고 생각하나요?"));
+  return out;
+}
+function showFeedback(n){
+  const fn = {1:fb1,2:fb2,3:fb3,4:fb4}[n];
+  let items = fn();
+  const box = $("#fb"+n);
+  if(!items.length) items = [li("e","","지금 바로 떠오르는 점검 질문은 없어요. 친구에게 글을 보여 주고, 어디에서 화자의 목소리가 가장 뚜렷하게 들리는지 물어보세요.")];
+  box.innerHTML = `<h3>점검 질문</h3><p class="note">점수나 정답이 아니라 스스로 따져 보기 위한 질문이에요. 답을 떠올리며 글을 고쳐도 되고, 그대로 둔 까닭을 말할 수 있다면 그것도 좋아요.</p>
+    <ol>${items.slice(0,8).map(q => `<li><span class="chip ${TAGCLS[q.cat]}">${TAGS[q.cat]}</span>${q.html}</li>`).join("")}</ol>`;
+  box.hidden = false; box.focus();
+}
+
+/* ---------- init ---------- */
+load();
+renderSentences(); renderPlanItems(); renderExplains();
+fill(); renderCount();
+$("#origInline").textContent = ORIGINAL;
+goStep(state.step || 0, false);
+if(!storageOK) status("이 브라우저에서는 저장할 수 없어요");
+else status("자동 저장 켜짐");
+})();
+</script>
+</body>
+</html>
